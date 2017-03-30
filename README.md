@@ -11,7 +11,9 @@
 
 ### docker 的主要操作
 
-1. docker info
+1. 查看 docker 信息
+
+        docker info
 
         Containers: 9
          Running: 7
@@ -67,7 +69,9 @@
          127.0.0.0/8
         Registries: docker.io (secure)       
 
-2. docker images    // 查看镜像
+2. 查看镜像 
+
+        docker images
 
         docker_nginx                     latest              6ffb1fa6a8bb        4 days ago          181.8 MB
         docker_redis                     latest              b805073db8ca        8 days ago          190.4 MB

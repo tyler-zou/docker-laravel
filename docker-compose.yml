@@ -11,10 +11,10 @@ services:
             - volumes_source
         depends_on:
             - nginx
-        #    - mysql
-        #    - memcached
-        #    - redis
-        #    - mongodb
+            - mysql
+            - memcached
+            - redis
+            - mongodb
         tty: true
 
 # PHP-FPM Container

@@ -1,0 +1,114 @@
+version: '2'
+
+services:
+
+# Workspace Container
+    
+    workspace:
+        build:
+            context: ./workspace
+        volumes_from:
+            - volumes_source
+        depends_on:
+            - nginx
+        #    - mysql
+        #    - memcached
+        #    - redis
+        #    - mongodb
+        tty: true
+
+# PHP-FPM Container
+
+    php-fpm:
+        build:
+            context: ./php-fpm
+            args:
+                - INSTALL_ZIP_ARCHIVE=true
+                - INSTALL_MEMCACHED=true
+                - INSTALL_OPCACHE=true
+            dockerfile: Dockerfile-70
+        volumes_from:
+            - volumes_source
+        expose:
+            - "9000"
+        links:
+            - mysql
+            - mongodb
+            - redis
+            - memcached
+
+# Nginx Server Container
+
+    nginx:
+        build:
+            context: ./nginx
+            args:
+                - PHP_UPSTREAM=php-fpm
+        volumes_from:
+            - volumes_source
+        volumes:
+            - ./logs/nginx:/var/log/nginx
+            - ./nginx/site-enable:/etc/nginx/sites-available
+        ports:
+            - "80:80"
+            - "443:443"
+        links:
+            - php-fpm
+
+# MySQL Container
+
+    mysql:
+        build: ./mysql
+        volumes_from:
+            - volumes_data
+        ports:
+            - "3306:3306"
+        environment:
+            MYSQL_DATABASE: test
+            MYSQL_USER: root
+            MYSQL_PASSWORD: 123456
+            MYSQL_ROOT_PASSWORD: 123456
+
+# MongoDB Container
+    
+    mongodb:
+        build: ./mongodb
+        volumes_from:
+            - volumes_data
+        ports:
+            - "27017:27017"
+
+# Redis Container
+
+    redis:
+        build: ./redis
+        volumes_from:
+            - volumes_data
+        ports:
+            - "6379:6379"
+
+# Memcached Container
+
+    memcached:
+        build: ./memcached
+        volumes_from:
+            - volumes_data
+        ports:
+            - "11211:11211"
+
+# Application Code Container
+
+    volumes_source:
+        image: tianon/true
+        volumes:
+            - ../../www:/var/www
+
+# Databases Data Container
+
+    volumes_data:
+        image: tianon/true
+        volumes:
+            - ./data/mysql:/var/lib/mysql
+            - ./data/memcached:/var/lib/memcached
+            - ./data/redis:/data
+            - ./data/mongodb:/data

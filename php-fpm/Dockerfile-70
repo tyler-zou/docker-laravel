@@ -1,0 +1,188 @@
+FROM php:7.0-fpm
+
+MAINTAINER Tyler <zzxaire@163.com>
+    
+RUN mv /etc/apt/sources.list /etc/apt/sources.list.bak && \
+	echo "deb http://mirrors.aliyun.com/debian wheezy main contrib non-free" > /etc/apt/sources.list && \
+    echo "deb-src http://mirrors.aliyun.com/debian wheezy main contrib non-free" >> /etc/apt/sources.list && \
+    echo "deb http://mirrors.aliyun.com/debian wheezy-updates main contrib non-free" >> /etc/apt/sources.list && \
+    echo "deb-src http://mirrors.aliyun.com/debian wheezy-updates main contrib non-free" >> /etc/apt/sources.list && \
+    echo "deb http://mirrors.aliyun.com/debian-security wheezy/updates main contrib non-free" >> /etc/apt/sources.list && \
+    echo "deb-src http://mirrors.aliyun.com/debian-security wheezy/updates main contrib non-free" >> /etc/apt/sources.list 
+
+
+RUN apt-get update && \
+	apt-get install -y aptitude && \
+	aptitude install -y libssl1.0.0=1.0.1t-1+deb7u2 \
+		zlib1g=1:1.2.7.dfsg-13 libkrb5-3=1.10.1+dfsg-5+deb7u7 \ 
+		libk5crypto3=1.10.1+dfsg-5+deb7u7 libgssapi-krb5-2=1.10.1+dfsg-5+deb7u7 \ 
+		libsasl2-2=2.1.25.dfsg1-6+deb7u1 libcomerr2=1.42.5-1.1+deb7u1
+
+
+RUN	apt-get install -y --no-install-recommends \
+        curl \
+        libmemcached-dev \
+        libz-dev \
+        libpq-dev \
+        libjpeg-dev \
+        libpng12-dev \
+        libfreetype6-dev \
+        libssl-dev \
+        libmcrypt-dev \
+        libicu-dev      
+
+
+RUN docker-php-ext-install mcrypt
+
+RUN docker-php-ext-install mysqli
+
+RUN docker-php-ext-install pdo_mysql
+
+RUN docker-php-ext-install pdo_pgsql
+
+RUN docker-php-ext-install intl
+
+RUN docker-php-ext-configure gd \
+        --enable-gd-native-ttf \
+        --with-jpeg-dir=/usr/lib \
+        --with-freetype-dir=/usr/include/freetype2 && \
+    docker-php-ext-install gd
+
+COPY ./xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+
+COPY ./src /tmp/src
+
+################ ZIP ###################
+ARG INSTALL_ZIP_ARCHIVE=true
+
+RUN if [ ${INSTALL_ZIP_ARCHIVE} = true ]; then \
+    pecl install /tmp/src/zip-1.13.5.tgz && \
+    docker-php-ext-enable zip \
+;fi
+
+################# REDIS #####################
+ARG INSTALL_PHPREDIS=true
+RUN if [ ${INSTALL_PHPREDIS} = true ]; then \
+    mkdir -p redis && \
+    tar -C redis -zxvf /tmp/src/redis-3.1.1.tgz --strip 1 && \
+    (\
+    	cd redis && \
+	phpize && \
+	./configure && \
+	make -j$(nproc) && \
+        make install \
+    ) && \
+    rm -r redis && \
+    #pecl install -o -f /tmp/src/redis-3.1.1.tgz && \
+    rm -rf /tmp/src/redis-3.1.1.tgz && \
+    docker-php-ext-enable redis \
+;fi
+
+##################### MONGODB #######################
+ARG INSTALL_MONGODB=true
+
+RUN if [ ${INSTALL_MONGODB} = true ]; then \
+    mkdir -p mongodb && \
+    tar -C mongodb -zxvf /tmp/src/mongodb-1.2.8.tgz --strip 1 && \
+    ( \
+        cd mongodb && \
+        phpize && \
+        ./configure && \
+        make -j$(nproc) && \
+        make install \
+    ) && \
+    rm -r mongodb && \
+    rm /tmp/src/mongodb-1.2.8.tgz && \
+    docker-php-ext-enable mongodb \
+;fi
+
+################ MEMCACHED ##################
+ARG INSTALL_MEMCACHED=true
+ 
+RUN if [ ${INSTALL_MEMCACHED} = true ]; then \
+    #curl -L -o /tmp/memcached.tar.gz "https://github.com/php-memcached-dev/php-memcached/archive/php7.tar.gz" && \
+    mkdir -p memcached && \
+    #tar -C memcached -zxvf /tmp/memcached.tar.gz --strip 1 && \
+    tar -C memcached -zxvf /tmp/src/memcached-3.0.3.tgz --strip 1 && \
+    ( \
+        cd memcached && \
+	phpize && \
+	./configure --disable-memcached-sasl && \
+	make -j$(nproc) && \
+	make install \
+    ) && \
+    rm -r memcached && \
+    rm /tmp/src/memcached-3.0.3.tgz && \
+    docker-php-ext-enable memcached \
+;fi
+
+################ OPCACHE ##################
+ARG INSTALL_OPCACHE=true
+
+RUN if [ ${INSTALL_OPCACHE} = true ]; then \
+    docker-php-ext-install opcache && \
+    docker-php-ext-enable opcache \
+;fi
+
+################ IMAGICK ####################
+ARG INSTALL_IMAGICK=true
+
+RUN if [ ${INSTALL_IMAGICK} = true ]; then \
+    mkdir -p imagemagick && \
+    tar -C imagemagick -zxvf /tmp/src/ImageMagick-7.0.5-1.tar.gz --strip 1 && \
+    ( \
+        cd imagemagick && \
+    #    phpize && \
+        ./configure && \
+        make -j$(nproc) && \
+        make install \
+    ) && \
+    rm -r imagemagick && \
+    rm /tmp/src/ImageMagick-7.0.5-1.tar.gz \
+;fi
+
+RUN if [ ${INSTALL_IMAGICK} = true ]; then \
+    mkdir -p imagick && \
+    tar -C imagick -zxvf /tmp/src/imagick-3.4.3.tgz --strip 1 && \
+    ( \
+        cd imagick && \
+        phpize && \
+        ./configure && \
+        make -j$(nproc) && \
+        make install \
+    ) && \
+    rm -r imagick && \
+    rm /tmp/src/imagick-3.4.3.tgz && \
+    docker-php-ext-enable imagick \
+;fi
+
+###################### APC ######################
+#ARG INSTALL_APC=true
+#
+#RUN if [ ${INSTALL_APC} = true ]; then \
+#    mkdir -p apc && \
+#    tar -C apc -zxvf /tmp/src/APC-3.1.9.tgz --strip 1 && \
+#    ( \
+#        cd apc && \
+#        phpize && \
+#        ./configure && \
+#        make -j$(nproc) && \
+#        make install \
+#    ) && \
+#    rm -r apc && \
+#    rm /tmp/src/APC-3.1.9.tgz && \
+#    docker-php-ext-enable apc \
+#;fi
+
+COPY ./php.ini /usr/local/etc/php/conf.d
+COPY ./php-fpm.conf /usr/local/etc/php-fpm.d/
+
+RUN rm -r /var/lib/apt/lists/*
+
+RUN usermod -u 1000 www-data
+
+WORKDIR /var/www
+
+CMD ["php-fpm"]
+
+EXPOSE 9000
